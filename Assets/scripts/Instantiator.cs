@@ -1,50 +1,56 @@
-﻿using System.Collections;
 using System.Collections.Generic;
 using System;
 using UnityEngine;
 public class Instantiator : MonoBehaviour
 {
-    public Hexagon hex; //our link to the hexagon script
-    public Hexagon chex;
-    public int HexPosX = 0;//the inital x position of the instantiator on the hexagon grid
-    public int HexPosY = 0;//the inital y position of the instantiator on the hexagon grid
+    private Hexagon hex; //our link to the hexagon script
+    private Hexagon chex;
+    public static int HexPosX;//the inital x position of the instantiator on the hexagon grid
+    public static int HexPosY;//the inital y position of the instantiator on the hexagon grid
     private int HexColumn = 50; // how many columns there are (basically the max x value)
     private int HexRow = 76; // how many rows there are (basically the max y value)
     private int countryNumber = 1;
-    public int countryCount = 1;
-    GameObject hexagon; // a gameobject we use for instantiation as well as Landmaster()
-    public float x; //the coordinates in the gameworld that each hexagon will be instantiated at on runtime
-    public float y;
-    public int totalHexes = 0; // the total hexagons that have been turned into land. Needs to be here because it is changed by a method in hexagon
-    public bool countryExists;
-    private int maxCountries = 250;
-    public GameObject[] countries;
+    public static int countryCount = 1;
+    private GameObject hexagon; // a gameobject we use for instantiation as well as Landmaster()
+    private float x; //the coordinates in the gameworld that each hexagon will be instantiated at on runtime
+    private float y;
+    public static int totalHexes; // the total hexagons that have been turned into land. Needs to be here because it is changed by a method in hexagon
+    private bool countryExists;
+    private int maxCountries = 500;
+    public static List<GameObject> countries;
+    public static List<Country> countryscripts;
+    private GameObject[] countries1;
+    public static GameObject nonHexFolder;
 
     void Start()
-    { //everything between here and when it calls Landmaster() is creating the grid itself.
-        x = this.transform.position.x;
-        y = this.transform.position.y;
+    { //everything between here and when it calls Landmaster() is creating the grid itself
+        nonHexFolder = GameObject.Find("Non-Country hexagons");
+        countries = new List<GameObject>();
+        countryscripts = new List<Country>();
+        x = 0;
+        y = 0;
         for (int i = 0; i <= HexColumn; i++)
         {
             x = 0;
             HexPosX = 0;
             for (int j = 0; j <= HexRow; j++)
             {
-                x += .32f;
-                transform.position = new Vector3(x, y, 0f);
+                x += .311f;
                 hexagon = (GameObject)Instantiate(Resources.Load("Hexagon"), new Vector3(x, y, 0f), Quaternion.identity);
+                transform.position = new Vector3(x, y, 0f);
                 HexPosX++;
             }
             HexPosY++;
             y += .38f;
         }
-        for (int l; l <= maxCountries; l++){
-            GameObject country = (GameObject)Instantiate(Resources.Load("Country"), new Vector3(0 , 0 , 0), Quaternion.identity);
-            countryCount++;
+        for (int l = 0; l <= maxCountries; l++)
+        {
+            GameObject country = (GameObject)Instantiate(Resources.Load("Country"), new Vector3(0, 0, 0), Quaternion.identity);
+            countries.Add(country);
+            countryscripts.Add(country.GetComponent<Country>());
         }
-        countries = GameObject.FindObjectsWithTag("country");
-        LandMaster(); // changes some hexagons to land, generates the random map each time.
-        Invoke("CountryMaster", 1);
+        LandMaster(); // changes some hexagoncountryscripts to land, generates the random map each time.
+        Invoke("CountryMaster", .2f);
     }
     public void LandMaster()
     {
@@ -122,13 +128,13 @@ public class Instantiator : MonoBehaviour
                         b = UnityEngine.Random.Range(0, 2);
                         break;
                     case 1:
-                        b = UnityEngine.Random.Range(1, 4);
+                        b = UnityEngine.Random.Range(2, 4);
                         break;
                     case 2:
                         b = UnityEngine.Random.Range(0, 4);
                         break;
                     case 3:
-                        b = UnityEngine.Random.Range(3, 6);
+                        b = UnityEngine.Random.Range(3, 5);
                         break;
                     case 4:
                         b = UnityEngine.Random.Range(0, 2);
@@ -227,6 +233,7 @@ public class Instantiator : MonoBehaviour
 
     public void CountryMaster()
     {
+        countryNumber = 1;
         HexPosY = 0;
         for (int i = 0; i <= HexColumn; i++)
         {
@@ -234,6 +241,7 @@ public class Instantiator : MonoBehaviour
 
             for (int j = 0; j <= HexRow; j++)
             {
+                GameObject country = countries[countryNumber];
                 countryExists = false;
                 hexagon = GameObject.Find("Hexagon " + HexPosX + " , " + HexPosY);
                 hex = hexagon.GetComponent<Hexagon>();
@@ -243,7 +251,7 @@ public class Instantiator : MonoBehaviour
                     {
                         chex = c.GetComponent<Hexagon>();
                     }
-                    catch (Exception e) { continue; }
+                    catch (Exception) { continue; }
 
                     if (hex.nationNum != 0 && chex.nationNum == hex.nationNum && chex.isCountry == true)
                     {
@@ -257,43 +265,56 @@ public class Instantiator : MonoBehaviour
                     {
                         chex = c.GetComponent<Hexagon>();
                     }
-                    catch (Exception e) { continue; }
+                    catch (Exception) { continue; }
                     if (hex.isCountry == false && !countryExists && hex.nationNum != 0 && chex.nationNum == hex.nationNum)
                     {
                         hex.isCountry = true;
-                        hexagon.transform.SetParent("Country" + countryNumber);
+                        hexagon.transform.SetParent(country.transform);
                         countryNumber++;
-                        print("New country at " + HexPosX + " , " + HexPosY);
                     }
                 }
     HexPosX++;
     }
     HexPosY++;
   }
-  
-  for (int i = 0; i>=HexColumn; i++) {
+        HexPosY = 0;
+  for (int i = 0; i<=HexColumn; i++) {
     HexPosX = 0;
-    for(int j = 0; j>=HexRow; j++) {
+    for(int j = 0; j<=HexRow; j++) {
         hexagon = GameObject.Find("Hexagon " + HexPosX + " , " + HexPosY);
         hex = hexagon.GetComponent<Hexagon>();
         foreach(GameObject c in hex.adj){
                     try {
                         chex = c.GetComponent<Hexagon>();
                     }
-                    catch (Exception e){
+                    catch (Exception){
                         continue;
                     }
-          if (chex.nationNum == hex.nationNum && c.transform.parent != hexagon.t){
-                        GameObject[] countryFixer = c.GetComponentsInChildren<Hexagon>();
-                    foreach (GameObject p in countryFixer){
+          if (chex.nationNum == hex.nationNum && c.transform.parent != hexagon.transform.parent){
+                        Hexagon[] countryFixer = c.transform.parent.GetComponentsInChildren<Hexagon>();
+                    foreach (Hexagon p in countryFixer){
                             p.transform.parent = hexagon.transform.parent;
-                            print("fixed!");
             }
         }
       }
+                HexPosX++;
     }
-            print("second sweep complete");
+            HexPosY++;
+           
   }
-        print(countryNumber);
+
+        foreach (Country c in countryscripts){
+            c.UpdateArray();
+            c.DeleteIfEmpty();
+            c.SetCapital();
+            c.AssignBeginningFood();
+        }
+        GameObject[] allHexes = GameObject.FindGameObjectsWithTag("hex");
+        foreach (GameObject g in allHexes) {
+            if (g.GetComponent<Hexagon>().hasCapital) g.GetComponent<Hexagon>().EditFlag();
+            if (g.GetComponent<Hexagon>().isCountry == false){
+                g.transform.SetParent(nonHexFolder.transform);
+            }
+        }
 }
 }
