@@ -7,8 +7,11 @@ public class Instantiator : MonoBehaviour
     private Hexagon chex;
     public static int HexPosX;//the inital x position of the instantiator on the hexagon grid
     public static int HexPosY;//the inital y position of the instantiator on the hexagon grid
-    private int HexColumn = 50; // how many columns there are (basically the max x value)
-    private int HexRow = 76; // how many rows there are (basically the max y value)
+    public static int size = 3;
+    private static int HexColumn = 36; // how many columns there are (basically the x height of the hexagon grid)
+    private static int HexRow = 60; // how many rows there are (basically the length of the hexagon grid)
+    int step = 200; //how many steps it takes in each walk
+    int maxHexes = (int)(HexColumn * HexRow * .2632f); //the minimum number of land hexagons that will be on a map
     private int countryNumber = 1;
     public static int countryCount = 1;
     private GameObject hexagon; // a gameobject we use for instantiation as well as Landmaster()
@@ -21,6 +24,7 @@ public class Instantiator : MonoBehaviour
     public static List<Country> countryscripts;
     private GameObject[] countries1;
     public static GameObject nonHexFolder;
+    public static bool spawningCountries = true;
 
     void Start()
     { //everything between here and when it calls Landmaster() is creating the grid itself
@@ -35,13 +39,13 @@ public class Instantiator : MonoBehaviour
             HexPosX = 0;
             for (int j = 0; j <= HexRow; j++)
             {
-                x += .311f;
                 hexagon = (GameObject)Instantiate(Resources.Load("Hexagon"), new Vector3(x, y, 0f), Quaternion.identity);
                 transform.position = new Vector3(x, y, 0f);
                 HexPosX++;
+                x += .459f;
             }
             HexPosY++;
-            y += .38f;
+            y += .56f;
         }
         for (int l = 0; l <= maxCountries; l++)
         {
@@ -55,8 +59,6 @@ public class Instantiator : MonoBehaviour
     public void LandMaster()
     {
         int b = 0; // used in switch statements later on
-        int step = 200; //how many steps it takes in each walk
-        int maxHexes = 1000; //the minimum number of hexagons that will be on a map
         string currenthex; // a string we use to set hexagon to the correct instance later
         while (totalHexes < maxHexes)
         { //from here to line 167 is the code to randomly change the hexagons to land in such a way that they are all going to be connected
@@ -316,5 +318,6 @@ public class Instantiator : MonoBehaviour
                 g.transform.SetParent(nonHexFolder.transform);
             }
         }
-}
+        spawningCountries = false;
+    }
 }
