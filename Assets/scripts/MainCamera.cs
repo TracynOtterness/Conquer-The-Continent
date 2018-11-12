@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -14,34 +14,67 @@ public class MainCamera : MonoBehaviour
     Vector3 fixTransform;
     public float[] clampValueX;
     public float[] clampValueY;
+    public int adjustValue;
 
     void Start()
     {
-        this.GetComponent<Camera>().orthographicSize = 10f;
+        this.GetComponent<Camera>().orthographicSize = 10.86f;
     }
+
+    //so basically use the website on school computer to make functios for clamp 
+    //values and instead of a switch for set things make it a continuous camera scroll between 0 and 10.48
 
     void Update()
     {
-        clampValueX = ClampValueGetX((int)cameraSize);
-        clampValueY = ClampValueGetY((int)cameraSize);
+        clampValueX = ClampValueGetX(cameraSize);
+        clampValueY = ClampValueGetY(cameraSize);
         fixTransform = transform.position;
-        if (Input.GetAxis("Mouse ScrollWheel") > 0f && this.GetComponent<Camera>().orthographicSize > 2f)
+        if (Input.GetAxis("Mouse ScrollWheel") > 0f && this.GetComponent<Camera>().orthographicSize > 1.48f)
         {
-            this.GetComponent<Camera>().orthographicSize -= 1f;
+            this.GetComponent<Camera>().orthographicSize -= .4f;//needs changed
             cameraSize = this.GetComponent<Camera>().orthographicSize;
-            poscoefficientx = AdjustDragCoefficientX((int)cameraSize);
-            poscoefficienty = AdjustDragCoefficientY((int)cameraSize);
+            poscoefficientx = AdjustDragCoefficientX(cameraSize);
+            poscoefficienty = AdjustDragCoefficientY(cameraSize);
+            adjustValue = 0;
+            if (UIManager.showingShipInfo && UIManager.ship.invasionPossibility) {
+                RectTransform invasionTransform = UIManager.invasionButton.GetComponent<RectTransform>();
+                switch((int)cameraSize){
+                    case 2: invasionTransform.localScale = new Vector3(2, 2, 1); adjustValue = 0; break;
+                    case 3: invasionTransform.localScale = new Vector3(1, 1, 1); adjustValue = 20; break;
+                    case 4: invasionTransform.localScale = new Vector3(.5f, .5f, 1); adjustValue = 25; break;
+                    default: UIManager.HideInvasionButton(); break;
+                }
+                UIManager.AdjustInvasionButton(adjustValue);
+                if (cameraSize <= 4 && !UIManager.ship.moored){
+                    UIManager.invasionButton.GetComponent<UnityEngine.UI.Image>().enabled = true;
+                    UIManager.invasionButton.GetComponentInChildren<UnityEngine.UI.Text>().enabled = true;
+                }
+            }
         }
-        else if (Input.GetAxis("Mouse ScrollWheel") < 0f && this.GetComponent<Camera>().orthographicSize < 10f)
+        else if (Input.GetAxis("Mouse ScrollWheel") < 0f && this.GetComponent<Camera>().orthographicSize < 10.48f)
         {
-            this.GetComponent<Camera>().orthographicSize += 1f;
+            this.GetComponent<Camera>().orthographicSize += .4f;
             cameraSize = this.GetComponent<Camera>().orthographicSize;
-            poscoefficientx = AdjustDragCoefficientX((int)cameraSize);
-            poscoefficienty = AdjustDragCoefficientY((int)cameraSize);
-            clampValueX = ClampValueGetX((int)cameraSize);
-            clampValueY = ClampValueGetY((int)cameraSize);
+            poscoefficientx = AdjustDragCoefficientX(cameraSize);
+            poscoefficienty = AdjustDragCoefficientY(cameraSize);
+          
+            clampValueX = ClampValueGetX(cameraSize);
+            clampValueY = ClampValueGetY(cameraSize);
             if (transform.position.x < clampValueX[0] || transform.position.x > clampValueX[1]) { FixCameraOnZoomOutX(); }
             if (transform.position.y < clampValueY[0] || transform.position.y > clampValueY[1]) { FixCameraOnZoomOutY(); }
+            adjustValue = 0;
+            if (UIManager.showingShipInfo && UIManager.ship.invasionPossibility)
+            {
+                RectTransform invasionTransform = UIManager.invasionButton.GetComponent<RectTransform>();
+                switch ((int)cameraSize)
+                {
+                    case 2: invasionTransform.localScale = new Vector3(2, 2, 1); adjustValue = 0; break;
+                    case 3: invasionTransform.localScale = new Vector3(1, 1, 1); adjustValue = 20; break;
+                    case 4: invasionTransform.localScale = new Vector3(.5f, .5f, 1); adjustValue = 25; break;
+                    default: UIManager.HideInvasionButton(); break;
+                }
+                UIManager.AdjustInvasionButton(adjustValue);
+            }
         }
         if (Input.GetMouseButtonDown(1))
         {
@@ -60,45 +93,34 @@ public class MainCamera : MonoBehaviour
             pos.x *= poscoefficientx;
             pos.y *= poscoefficienty;
             transform.position = new Vector3(Mathf.Clamp(originalTransform.x - pos.x, clampValueX[0], clampValueX[1]), Mathf.Clamp(originalTransform.y - pos.y, clampValueY[0], clampValueY[1]), originalTransform.z);
+            if (UIManager.showingShipInfo && UIManager.ship.invasionPossibility){ UIManager.AdjustInvasionButton(adjustValue); }
         }
     }
-    public float[] ClampValueGetX(int cs)
+    public float[] ClampValueGetX(float cs) //needs reworking to be fine with floats
     {
+        //function for clampvalueXmin: y = 1.773x + .138
+        //function for clampvalueXmax: 
         float[] b = new float[2];
-        switch (cs)
-        {
-            case 10: b[0] = 15.73f; b[1] = 15.73f; break;
-            case 9: b[0] = 14.44f; b[1] = 16.14f; break;
-            case 8: b[0] = 12.88f; b[1] = 17.06f; break;
-            case 7: b[0] = 11.29f; b[1] = 18.06f; break;
-            case 6: b[0] = 9.70f; b[1] = 19.02f; break;
-            case 5: b[0] = 8.11f; b[1] = 19.98f; break;
-            case 4: b[0] = 6.52f; b[1] = 20.98f; break;
-            case 3: b[0] = 4.93f; b[1] = 21.94f; break;
-            case 2: b[0] = 3.30f; b[1] = 22.90f; break;
-        }
+        b[0] = cs * 1.74f - .3f;
+        b[1] = -cs * .85f + 27.86f;
         return b;
     }
-    public float[] ClampValueGetY(int cs)
+    public float[] ClampValueGetY(float cs) //needs reworking to be fine with floats
     {
+        //function for clampvalueYmin: y = x - .189f
+        //function for clampvalueYmax: y = -x + 19.23
         float[] b = new float[2];
-        switch (cs)
-        {
-            case 10: b[0] = 9.61f; b[1] = 9.61f; break;
-            case 9: b[0] = 8.74f; b[1] = 10.40f; break;
-            case 8: b[0] = 7.76f; b[1] = 11.42f; break;
-            case 7: b[0] = 6.77f; b[1] = 12.41f; break;
-            case 6: b[0] = 5.78f; b[1] = 13.40f; break;
-            case 5: b[0] = 4.80f; b[1] = 14.42f; break;
-            case 4: b[0] = 3.81f; b[1] = 15.41f; break;
-            case 3: b[0] = 2.79f; b[1] = 16.40f; break;
-            case 2: b[0] = 1.80f; b[1] = 17.38f; break;
-        }
+        b[0] = cs * .97f - .3f;
+        b[1] = -cs * .97f + 20.72f;
         return b;
     }
     public void FixCameraOnZoomOutX()
     {
         print("FixCameraX");
+        print("x transform: " + transform.position.x);
+        print("y transform: " + transform.position.y);
+        print(clampValueX[0]);
+        print(clampValueX[1]);
         float fixX = 0;
         if (transform.position.x < clampValueX[0]) { fixX = clampValueX[0]; }
         if (transform.position.x > clampValueX[1]) { fixX = clampValueX[1]; }
@@ -108,18 +130,22 @@ public class MainCamera : MonoBehaviour
     public void FixCameraOnZoomOutY()
     {
         print("FixCameraY");
+        print("x transform: " + transform.position.x);
+        print("y transform: " + transform.position.y);
+        print(clampValueY[0]);
+        print(clampValueY[1]);
         float fixY = 0;
         if (transform.position.y < clampValueY[0]) { fixY = clampValueY[0]; }
         if (transform.position.y > clampValueY[1]) { fixY = clampValueY[1]; }
         fixTransform = new Vector3(fixTransform.x, fixY, fixTransform.z);
         transform.position = fixTransform;
     }
-    float AdjustDragCoefficientX(int cs)
+    float AdjustDragCoefficientX(float cs)
     {
         float returnValue = (2 * cs) / .625f;
         return returnValue;
     }
-    float AdjustDragCoefficientY(int cs)
+    float AdjustDragCoefficientY(float cs)
     {
         float returnValue = cs * 2;
         return returnValue;
