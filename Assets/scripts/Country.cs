@@ -4,14 +4,16 @@ using System.Collections.Generic;
 
 public class Country : MonoBehaviour
 {
-    public List<Hexagon> hexagons;
+
     public int unitCount;
     public int food;
     public int ymax;
     public int ymin = 76;
     public int xmax;
     public int xmin = 50;
+    public List<Hexagon> hexagons;
     public List<Person> people;
+    public List<Ship> ships;
     List<Hexagon> legacyHexes; //the list to store the legacy country's hexagons
     List<Hexagon> newCountryHexes1; //the list to store the 2nd country's hexagons
     List<Hexagon> newCountryHexes2; //the list to store the 3rd country's hexagons if neccesarry
@@ -25,11 +27,14 @@ public class Country : MonoBehaviour
     public bool UpdateArrayAndCountrySplitterConflictFixer = true;
     bool specialTripleSplit = false;
     public bool isSelected;
+    public bool hasHarbor;
+    public bool isInvasionCountry;
     float time = .5f;
+    public int invasionFishTurns = 5;
 
     void Awake()
     {
-        this.name = "Country " + (Instantiator.countryCount); //not sure why I need to do the -1000 thing here, debug it later
+        this.name = "Country " + (Instantiator.countryCount); 
         Instantiator.countryCount++;
         this.transform.SetParent(GameObject.Find("Master").transform);
     }
@@ -41,23 +46,29 @@ public class Country : MonoBehaviour
         currentRunHexes = new List<Hexagon>();
         activeHexes = new List<Hexagon>();
         visitedHexes = new List<Hexagon>();
-
-
 	}
 	private void Update()
 	{
         if(isSelected){
             time -= Time.deltaTime;
             if (time <= 0){
-                if (capital.village.GetComponent<SpriteRenderer>().enabled) capital.village.GetComponent<SpriteRenderer>().enabled = false;
-                else capital.village.GetComponent<SpriteRenderer>().enabled = true;
-                time = .5f;
+                if (!isInvasionCountry){
+                    if (capital.village.GetComponent<SpriteRenderer>().enabled) capital.village.GetComponent<SpriteRenderer>().enabled = false;
+                    else capital.village.GetComponent<SpriteRenderer>().enabled = true;
+                    time = .5f; 
+                }
+                else{
+                    if (capital.shipCapital.GetComponent<SpriteRenderer>().enabled) capital.shipCapital.GetComponent<SpriteRenderer>().enabled = false;
+                    else capital.shipCapital.GetComponent<SpriteRenderer>().enabled = true;
+                    time = .5f; 
+                }
             }
         }
 	}
 	public void UpdateArray()
     {
         people.Clear();
+        ships.Clear();
         hexagons.Clear();
         int childCount = transform.childCount;
         for (int i = 0; i < childCount; i++) {
@@ -66,15 +77,22 @@ public class Country : MonoBehaviour
             {
                 hexagons.Add(child.GetComponent<Hexagon>());
             }
-            else if (child.tag.Equals("person")) {
+            else if (child.tag.Equals("person"))
+            {
                 people.Add(child.GetComponent<Person>());
             }
+            else if (child.tag.Equals("ship")){
+                ships.Add(child.GetComponent<Ship>());
+            }
         }
-
-        if (hexagons.Count < 2) {
-            UpdateArrayAndCountrySplitterConflictFixer = false; //I want to get rid of this bool deal if possible
-            Invoke("RemoveFromCountryLists", .1f);
+        if (!isInvasionCountry){
+            if (hexagons.Count < 2)
+            {
+                UpdateArrayAndCountrySplitterConflictFixer = false; //I want to get rid of this bool deal if possible
+                Invoke("RemoveFromCountryLists", .1f);
+            }   
         }
+        //might need an alternative route to destruction for invasion countries here
     }
     public void DeleteIfEmpty() //this is unneccesarry, can just call RemoveCountryLists
     {
@@ -84,12 +102,14 @@ public class Country : MonoBehaviour
         }
     }
     void RemoveFromCountryLists(){
-        Starve();
+        print(this);
+        if (!Instantiator.spawningCountries){ Starve();}
         foreach(Hexagon h in hexagons){
             h.transform.SetParent(Instantiator.nonHexFolder.transform);
             h.isCountry = false;
             if (h.hasCapital)
             {
+                h.hasCapital = false;
                 Destroy(h.village);
                 h.guardedBy = 0;
             }
@@ -102,111 +122,169 @@ public class Country : MonoBehaviour
         food = hexagons.Count * 5;
     }
     public void GiveRoundFood(){
+        if (isInvasionCountry) { print("Hello"); }
         foreach (Hexagon h in hexagons)
         {
             if (h.hasGrave == false) food++;
         }
-        try{
+        try
+        {
+            print(this + " has " + people.Count + " people");
             foreach (Person p in people)
             {
-                food -= 2 * (int)Math.Pow(3, (p.tier - 1));
-                if (food < 0) {
-                    Starve();
-                    food = hexagons.Count;
+                print(p);
+                if (!p.isSailor)
+                {
+                    food -= 2 * (int)Math.Pow(3, (p.tier - 1));
                 }
-            }  
-
+                else
+                {
+                    if (invasionFishTurns > 0 && p.tier == 1)
+                    {
+                        food += Ship.fishValue;
+                    }
+                    food -= Ship.sailorFoodConsumption;
+                }
+            }
+            invasionFishTurns--;
+            if (food < 0)
+            {
+                Starve();
+                food = hexagons.Count;
+            }
         }
-        catch(Exception){}
+        catch (Exception) { print("test"); }
     }
     public void UpdateGuard(){
         foreach (Hexagon h in hexagons){
-            if (h.hasGuard == false) h.guardedBy = 0;
-        }
-        foreach (Hexagon h in hexagons){
-            if (h.hasGuard){
+            if (h.hasGuard == false && h.hasCastle == false && h.hasHarbor == false && h.hasCapital == false) h.guardedBy = 0;
+            if (h.hasCapital || h.hasHarbor)
+            {
+                h.guardedBy = 1;
+            }
+            if(h.hasCastle){
+                if(h.guardedBy < 2){
+                    h.guardedBy = 2;  
+                }
                 foreach (GameObject g in h.adj)
                 {
-                    if (g.transform.parent == h.transform.parent) {
+                    if (g.transform.parent == h.transform.parent)
+                    {
                         Hexagon adjHexScript = g.GetComponent<Hexagon>();
-                        if (adjHexScript.guardedBy < h.guardedBy) adjHexScript.guardedBy = h.guardedBy; 
+                        if (adjHexScript.guardedBy < 2) adjHexScript.guardedBy = 2;
+                    }
+                }
+            }
+            if(h.hasGuard){
+                if(h.guardedBy < h.guard.tier){
+                    h.guardedBy = h.guard.tier;  
+                }
+                foreach (GameObject g in h.adj)
+                {
+                    if (g.transform.parent == h.transform.parent)
+                    {
+                        Hexagon adjHexScript = g.GetComponent<Hexagon>();
+                        if (adjHexScript.guardedBy < h.guard.tier) adjHexScript.guardedBy = h.guard.tier;
                     }
                 }
             }
         }
     }
-    public void SetCapital()
+    public void SetCapital(Hexagon chosenHexagon = null)
     {
-        //this could probably be a little bit optimized?
-        if (hexagons.Count >= 2)
-        {
-            GameObject capitalObject;
-            int b = 0;
-            for (int i = 0; i <= 3; i++)
+        GameObject capitalObject;
+        if(chosenHexagon == null){
+            //this could probably be a little bit optimized?
+            if (hexagons.Count >= 2)
             {
+                int b = 0;
+                for (int i = 0; i <= 3; i++)
+                {
+                    b = UnityEngine.Random.Range(0, hexagons.Count);
+                    if (hexagons[b].hasGuard == false && hexagons[b].hasCastle == false && hexagons[b].hasHarbor == false && hexagons[b].hasGrave == false)
+                    {
+                        print("found a spot by chance");
+                        try
+                        {
+                            capital = hexagons[b];
+                            capitalObject = (GameObject)Instantiate(Resources.Load("Capital"), new Vector3(capital.transform.position.x, capital.transform.position.y, 0f), Quaternion.identity);
+                        }
+                        catch (Exception) { return; }
+                        capitalObject.transform.SetParent(capital.transform);
+                        capital.AddCapital();
+                        return;
+                    }
+                }
+                foreach (Hexagon h in hexagons)
+                { //this whole loop is for finding a hexagon to put the capital on if it can't find a random one in 3 tries.
+                    if (h.hasGuard == false && h.hasCastle == false && h.hasHarbor == false && h.hasGrave == false)
+                    {
+                        print("found a spot via elimination");
+                        try
+                        {
+                            capital = h;
+                            capitalObject = (GameObject)Instantiate(Resources.Load("Capital"), new Vector3(capital.transform.position.x, capital.transform.position.y, 0f), Quaternion.identity);
+                        }
+                        catch (Exception) { return; }
+                        capitalObject.transform.SetParent(capital.transform);
+                        capital.AddCapital();
+                        return;
+                    }
+                }
+                //this happens if every single hexagon has something on it
+                Starve();
                 b = UnityEngine.Random.Range(0, hexagons.Count);
-                if (hexagons[b].hasGuard == false)
-                {
-                    try
-                    {
-                        capital = hexagons[b];
-                        capitalObject = (GameObject)Instantiate(Resources.Load("Capital"), new Vector3(capital.transform.position.x, capital.transform.position.y, 0f), Quaternion.identity);
-                    }
-                    catch (Exception) { return; }
-                    capitalObject.transform.SetParent(capital.transform);
-                    capital.AddCapital();
-                    return;
-                }
+                capital = hexagons[b];
+                print("forcing a spot to me made on " + capital);
+                capitalObject = (GameObject)Instantiate(Resources.Load("Capital"), new Vector3(capital.transform.position.x, capital.transform.position.y, 0f), Quaternion.identity);
+                capitalObject.transform.SetParent(capital.transform);
+                capital.AddCapital();
+                Destroy(capital.grave);
+                Destroy(capital.castle);
+                Destroy(capital.harbor);
             }
-            foreach (Hexagon h in hexagons)
-            { //this whole loop is for finding a hexagon to put the capital on if it can't find a random one in 3 tries.
-                if (h.hasGuard == false)
-                {
-                    try
-                    {
-                        capital = h;
-                        capitalObject = (GameObject)Instantiate(Resources.Load("Capital"), new Vector3(capital.transform.position.x, capital.transform.position.y, 0f), Quaternion.identity);
-                    }
-                    catch (Exception) { return; }
-                    capitalObject.transform.SetParent(capital.transform);
-                    capital.AddCapital();
-                    return;
-                }
-            }
-            Starve();
-            b = UnityEngine.Random.Range(0, hexagons.Count);
-            capital = hexagons[b]; //maybe I need the try/catch maybe I don't?
+        }
+        else{
+            capital.RemoveCapital();
+            capital = chosenHexagon;
             capitalObject = (GameObject)Instantiate(Resources.Load("Capital"), new Vector3(capital.transform.position.x, capital.transform.position.y, 0f), Quaternion.identity);
             capitalObject.transform.SetParent(capital.transform);
             capital.AddCapital();
-            Destroy(capital.grave);
+            capital.EditFlag();
+            if(isInvasionCountry){
+                
+            }
         }
      }
     public void CheckCountrySplit()
     {
         print("CheckCountrySplit being ran for " + this.gameObject);
         int runsCount = 0; //how many runs that have found a new country without the old capital.
-        bool CountrySplitted = true; //control to make sure if it is split the check to stop it if it isn't split doesn't work.
+        currentRunHexes.Clear();
 
         foreach (Hexagon h in hexagons) //hexagons is from the country from which CheckCountrySplit is ran
-
         {
             if (visitedHexes.Contains(h))
             {
+                print("visitedHexagons contains " + h);
                 continue;
             }
+            print(h + "is the starting point for this run");
             activeHexes.Add(h);
             while (CheckIncomplete)
             {
                 RunCheck();
             } 
             CheckIncomplete = true;
-            if (runCount == hexagons.Count && CountrySplitted){
-                return; //have a boolean make this only work on run 1.
+            print("The run beginning with "+h+" contained " + runCount + " hexagons out of " + hexagons.Count + " in the parent country");
+            if (runCount == hexagons.Count){
+                activeHexes.Clear();
+                visitedHexes.Clear();
+                runCount = 0;
+                return; 
             } 
             else
             {
-                CountrySplitted = false;
                 if (capitalRun)
                 {
                     legacyHexes =  new List<Hexagon>(currentRunHexes);
@@ -224,6 +302,7 @@ public class Country : MonoBehaviour
                     runsCount++;
                 }
                 currentRunHexes.Clear();
+                runCount = 0;
             }
         }
         print(runsCount); 
@@ -232,6 +311,10 @@ public class Country : MonoBehaviour
             CreateCountryTwo(); 
         }
         UpdateLegacyCountry();
+        visitedHexes.Clear();
+        legacyHexes.Clear();
+        newCountryHexes1.Clear();
+        newCountryHexes2.Clear();
     }
 
     void RunCheck()
@@ -245,9 +328,14 @@ public class Country : MonoBehaviour
                 if (gScript.transform.parent == activeHexes[i].transform.parent){
                     if (activeHexes.Contains(gScript) == false && currentRunHexes.Contains(gScript) == false)
                     {
+                        print("added " + gScript + "to activeHexes");
                         activeHexes.Add(gScript);
                         CheckIncomplete = true;
                     }
+                }
+                if (gScript.hasShip && gScript.ship.transform.parent == activeHexes[i].transform.parent)
+                {
+                    capitalRun = true;
                 }
             }
             visitedHexes.Add(activeHexes[i]);
@@ -295,6 +383,13 @@ public class Country : MonoBehaviour
         foreach (Hexagon h in c.hexagons)
         {
             h.gameObject.transform.SetParent(country.transform);
+            if(h.hasCastle){
+                h.castle.transform.SetParent(country.transform);
+            }
+            if (h.hasHarbor)
+            {
+                h.harbor.transform.SetParent(country.transform);
+            }
         }
         foreach(Person p in people){
             Hexagon h = p.hexagon;
@@ -322,6 +417,14 @@ public class Country : MonoBehaviour
         foreach (Hexagon h in newCountryHexes2)
         {
             h.transform.SetParent(country.transform);
+            if (h.hasCastle)
+            {
+                h.castle.transform.SetParent(country.transform);
+            }
+            if (h.hasHarbor)
+            {
+                h.harbor.transform.SetParent(country.transform);
+            }
         }
         foreach (Person p in people)
         {
@@ -333,12 +436,15 @@ public class Country : MonoBehaviour
     }
 
     void Starve(){
+        print("starving the units in " + this);
         foreach(Person p in people){
+            print(p + " from nationNumber " + p.nationNum);
             if (p != null){
                 GameObject grave = (GameObject)Instantiate(Resources.Load("Grave"), new Vector3(p.transform.position.x, p.transform.position.y, 0), Quaternion.identity);
                 p.hexagon.hasGrave = true;
                 p.hexagon.grave = grave;
                 grave.transform.SetParent(p.hexagon.transform);
+                grave.name = "grave " + p;
                 p.hexagon.hasGuard = false;
                 p.hexagon.guardedBy = 0;
                 UIManager.allPeople.Remove(p);
@@ -347,12 +453,26 @@ public class Country : MonoBehaviour
         }
         UIManager.SpawnRedDots();
         people.Clear();
+        UpdateArray();
+        UpdateGuard();
     }
        public int GiveIncome(){
-            int i = 0;
-            foreach (Hexagon h in hexagons){
-                if (!h.hasGrave) i++;
+        int i = 0;
+        foreach (Hexagon h in hexagons){
+            if (!h.hasGrave) {
+                i++;
             }
+        }
+        if (isInvasionCountry && invasionFishTurns > 0)
+        {
+            foreach (Person p in people)
+            {
+                if (p.isSailor && p.tier == 1)
+                {
+                    i += Ship.fishValue;
+                } 
+            }
+        }
             return i;
         }
 }
