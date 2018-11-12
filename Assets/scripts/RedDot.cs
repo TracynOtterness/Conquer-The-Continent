@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -6,7 +6,9 @@ public class RedDot : MonoBehaviour {
     public float time = .5f;
     Sprite sprite;
     public Person person;
+    public Ship ship;
     bool flash = true;
+    public bool notShip = true;
 
 	// Use this for initialization
 	void Start () {
@@ -15,21 +17,45 @@ public class RedDot : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
-        if (person.hasUsedMove == true){
-            flash = false;
-            this.GetComponent<SpriteRenderer>().sprite = null;
-        }
-        if (flash){
-            time -= Time.deltaTime;
-            if (time <= 0)
+        if(notShip){
+            if (person.hasUsedMove == true)
             {
-                if (this.GetComponent<SpriteRenderer>().sprite == null)
-                {
-                    this.GetComponent<SpriteRenderer>().sprite = sprite;
-                }
-                else this.GetComponent<SpriteRenderer>().sprite = null;
-                time = .5f;
+                flash = false;
+                this.GetComponent<SpriteRenderer>().sprite = null;
             }
+            if (flash)
+            {
+                time -= Time.deltaTime;
+                if (time <= 0)
+                {
+                    if (this.GetComponent<SpriteRenderer>().sprite == null)
+                    {
+                        this.GetComponent<SpriteRenderer>().sprite = sprite;
+                    }
+                    else this.GetComponent<SpriteRenderer>().sprite = null;
+                    time = .5f;
+                }
+            }    
+        }
+        else{
+            if (ship.hasUsedMove == true)
+            {
+                flash = false;
+                this.GetComponent<SpriteRenderer>().sprite = null;
+            }
+            if (flash)
+            {
+                time -= Time.deltaTime;
+                if (time <= 0)
+                {
+                    if (this.GetComponent<SpriteRenderer>().sprite == null)
+                    {
+                        this.GetComponent<SpriteRenderer>().sprite = sprite;
+                    }
+                    else this.GetComponent<SpriteRenderer>().sprite = null;
+                    time = .5f;
+                }
+            }    
         }
 	}
 }
