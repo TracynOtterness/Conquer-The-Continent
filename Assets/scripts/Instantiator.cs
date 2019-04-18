@@ -7,11 +7,12 @@ public class Instantiator : MonoBehaviour
     private Hexagon chex;
     public static int HexPosX;//the inital x position of the instantiator on the hexagon grid
     public static int HexPosY;//the inital y position of the instantiator on the hexagon grid
-    public static int size = 3;
-    private static int HexColumn = 36; // how many columns there are (basically the x height of the hexagon grid)
-    private static int HexRow = 60; // how many rows there are (basically the length of the hexagon grid)
-    int step = 200; //how many steps it takes in each walk
-    int maxHexes = (int)(HexColumn * HexRow * .2632f); //the minimum number of land hexagons that will be on a map
+    public static int size = 2;
+    private static int HexColumn; // how many columns there are (basically the x height of the hexagon grid)
+    private static int HexRow; // how many rows there are (basically the length of the hexagon grid)
+    int step; //how many steps it takes in each walk
+    int maxHexes; //the minimum number of land hexagons that will be on a map
+    int edgeBuffer; //how far from the edge land hexagons can spawn
     private int countryNumber = 1;
     public static int countryCount = 1;
     private GameObject hexagon; // a gameobject we use for instantiation as well as Landmaster()
@@ -28,6 +29,12 @@ public class Instantiator : MonoBehaviour
 
     void Start()
     { //everything between here and when it calls Landmaster() is creating the grid itself
+        switch(size){
+            case 1: HexColumn = 14; HexRow = 24; step = 10; maxHexes = (int)(HexColumn * HexRow * .5f); edgeBuffer = 1; break;
+            case 2: HexColumn = 24; HexRow = 40; step = 30; maxHexes = (int)(HexColumn * HexRow * .35f); edgeBuffer = 2; break;    
+            case 3: HexColumn = 36; HexRow = 60; step = 200; maxHexes = (int)(HexColumn * HexRow * .2632f); edgeBuffer = 5; break;
+            default: HexColumn = 36; HexRow = 60; step = 200; maxHexes = (int)(HexColumn * HexRow * .2632f); edgeBuffer = 5; break;
+        }
         nonHexFolder = GameObject.Find("Non-Country hexagons");
         countries = new List<GameObject>();
         countryscripts = new List<Country>();
@@ -45,7 +52,7 @@ public class Instantiator : MonoBehaviour
                 x += .459f;
             }
             HexPosY++;
-            y += .56f;
+            y += .5592f;
         }
         for (int l = 0; l <= maxCountries; l++)
         {
@@ -64,17 +71,17 @@ public class Instantiator : MonoBehaviour
         { //from here to line 167 is the code to randomly change the hexagons to land in such a way that they are all going to be connected
             //HexPosX = HexRow / 2;
             //HexPosY = HexColumn / 2;
-            HexPosX = UnityEngine.Random.Range(5, HexRow - 6);
-            HexPosY = UnityEngine.Random.Range(5, HexColumn - 6);
+            HexPosX = UnityEngine.Random.Range(edgeBuffer, HexRow - (edgeBuffer + 1));
+            HexPosY = UnityEngine.Random.Range(edgeBuffer, HexColumn - (edgeBuffer + 1));
             for (int steps = 0; steps < step; steps++)
             { //here we check if the hexagon is on the border, which limits the directions the instantiator can step next
-                if (HexPosX == 5)
+                if (HexPosX == edgeBuffer)
                 {
-                    if (HexPosY == 5)
+                    if (HexPosY == edgeBuffer)
                     {
                         b = 0; //leftmost column bottom
                     }
-                    else if (HexPosY == HexColumn - 5)
+                    else if (HexPosY == HexColumn - edgeBuffer)
                     {
                         b = 1; //leftmost column top
                     }
@@ -83,13 +90,13 @@ public class Instantiator : MonoBehaviour
                         b = 2; //leftmost column, not top or bottom
                     }
                 }
-                else if (HexPosX == HexRow - 5)
+                else if (HexPosX == HexRow - edgeBuffer)
                 {
-                    if (HexPosY == HexColumn - 5)
+                    if (HexPosY == HexColumn - edgeBuffer)
                     {
                         b = 3; //rightmost column top
                     }
-                    else if (HexPosY == 5)
+                    else if (HexPosY == edgeBuffer)
                     {
                         b = 4; //rightmost column bottom
                     }
@@ -98,7 +105,7 @@ public class Instantiator : MonoBehaviour
                         b = 5; //rightmost column, not top or bottom
                     }
                 }
-                else if (HexPosY == 5)
+                else if (HexPosY == edgeBuffer)
                 {
                     if (HexPosX % 2 == 0)
                     {
@@ -109,7 +116,7 @@ public class Instantiator : MonoBehaviour
                         b = 7; //bottom row, odd column
                     }
                 }
-                else if (HexPosY == HexColumn - 5)
+                else if (HexPosY == HexColumn - edgeBuffer)
                 {
                     if (HexPosX % 2 == 0)
                     {
