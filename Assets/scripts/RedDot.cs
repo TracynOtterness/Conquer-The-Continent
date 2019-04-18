@@ -4,10 +4,10 @@ using UnityEngine;
 
 public class RedDot : MonoBehaviour {
     public float time = .5f;
-    Sprite sprite;
+    public Sprite sprite;
     public Person person;
     public Ship ship;
-    bool flash = true;
+    public bool flash = true;
     public bool notShip = true;
 
 	// Use this for initialization
@@ -17,6 +17,23 @@ public class RedDot : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
+        if(notShip)
+        {
+            if(person.hasUsedMove == true)
+            {
+                flash = false;
+                this.GetComponent<SpriteRenderer>().sprite = null;
+            }
+        }
+        else
+        {
+            if (ship.hasUsedMove == true)
+            {
+                flash = false;
+                this.GetComponent<SpriteRenderer>().sprite = null;
+            }  
+        }
+        /*
         if(notShip){
             if (person.hasUsedMove == true)
             {
@@ -56,6 +73,6 @@ public class RedDot : MonoBehaviour {
                     time = .5f;
                 }
             }    
-        }
+        }*/
 	}
 }
