@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -23,7 +23,7 @@ public class Harbor : MonoBehaviour {
     {
         if (hover && UIManager.hoverMode)
         {
-            this.transform.position = Mouse.mousePos;
+            this.transform.position = FindObjectOfType<Mouse>().transform.position;
         }
     }
     public void Place(GameObject g)
@@ -34,6 +34,8 @@ public class Harbor : MonoBehaviour {
         Destroy(this.GetComponent<CircleCollider2D>());
         Vector3 pos = hex.transform.position;
         this.transform.position = pos;
+        this.transform.parent.GetComponent<Country>().UpdateGuard();
+        this.transform.parent.GetComponent<Country>().capital.EditFlag();
         foreach (GameObject go in hexagon.adj){
             Hexagon h = go.GetComponent<Hexagon>();
             if (h.hasShip && !h.ship.isHarbored){
