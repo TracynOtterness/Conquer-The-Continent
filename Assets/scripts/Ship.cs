@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -65,7 +65,8 @@ public class Ship : MonoBehaviour {
             }
         }
         if(hover && UIManager.hoverMode){
-            this.transform.position = Mouse.mousePos;
+            this.transform.position = FindObjectOfType<Mouse>().transform.position;
+            this.GetComponent<SpriteRenderer>().sortingOrder = 4;
         }
 
         if (doMarch)
@@ -120,7 +121,6 @@ public class Ship : MonoBehaviour {
             this.transform.position = pos;
             pos.z = -1;
             Mouse.ResetViableHexagons();
-            isFirstTurn = false;
             Place();
         }
         else
@@ -144,6 +144,10 @@ public class Ship : MonoBehaviour {
         Mouse.ResetViableHexagons();
     }
     public void Place(){
+        print("ship placed");
+        this.transform.parent.GetComponent<Country>().capital.EditFlag();
+        this.GetComponent<SpriteRenderer>().sortingOrder = 2;
+        isFirstTurn = false;
         hexagon.ToggleShipColor(nationNum);
         hexagon.hasShip = true;
         hexagon.ship = this;
