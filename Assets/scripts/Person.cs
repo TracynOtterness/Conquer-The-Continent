@@ -19,7 +19,7 @@ public class Person : MonoBehaviour
     public GameObject unusedHexMaster;
     private Hexagon oldHexagon;
     public Country hexCountry;
-    private Sprite[] sprites;
+    public Sprite[] sprites;
     public bool hasUsedMove = false;
     public bool isSailor = false;
     public bool usingFirstTurn = true;
@@ -27,6 +27,8 @@ public class Person : MonoBehaviour
     public GameObject redDot = null;
     List<Hexagon> pathHexes;
     Vector2 hexDistance;
+    static float time = .5f;
+    public SpriteRenderer sprite;
 
     void Awake()
     {
@@ -35,11 +37,16 @@ public class Person : MonoBehaviour
         this.nationNum = UIManager.turnNumber;
         this.name = "Unit " + UIManager.selectedCountry + " , " + UIManager.selectedCountry.GetComponent<Country>().unitCount;
         this.transform.SetParent(UIManager.selectedCountry.transform);
+        sprite = this.GetComponent<SpriteRenderer>();
         UIManager.selectedCountryScript.unitCount++;
     }
     void Update()
     {
-        if (hover && UIManager.hoverMode) this.transform.position = Mouse.mousePos;
+        
+        if (hover && UIManager.hoverMode) {
+            transform.position = FindObjectOfType<Mouse>().transform.position;
+        }
+
         if (doMarch){
             timer += Time.deltaTime;
             if(timer >= .5f){
@@ -58,6 +65,7 @@ public class Person : MonoBehaviour
                 this.transform.position = new Vector3((pathHexes[currentStep].transform.position.x + 2 * timer * hexDistance.x), (pathHexes[currentStep].transform.position.y + 2 * timer * hexDistance.y));//transform = hex that person is coming from + percentage of time to .5 seconds * hexdistance; 
             }
         }
+
     }
 
     public void MovePerson(GameObject gameobject){
@@ -95,6 +103,8 @@ public class Person : MonoBehaviour
 
     public void Place()
     {
+        print("Person.place()");
+        if(usingFirstTurn) usingFirstTurn = false;
         if (redDot != null){
             redDot.transform.position = pos;
             if (UIManager.toggled == true) redDot.layer = 0;
@@ -188,7 +198,7 @@ public class Person : MonoBehaviour
                         }
                         foreach (Person p in unitsToSwitchParent)
                         {
-                            print(p);
+                            //print(p);
                             p.gameObject.transform.SetParent(transform.parent.transform);
                         }
                         foreach (Ship s in shipsToSwitchParent){
@@ -208,15 +218,13 @@ public class Person : MonoBehaviour
             GameObject OldHexCountry = hex.transform.parent.gameObject;
             Country OldHexCountryScript = OldHexCountry.GetComponent<Country>();
             hex.transform.SetParent(hexCountry.transform);
-            //GameObject NewHexCountry = hex.transform.parent.gameObject;
-            //Country NewHexCountryScript = NewHexCountry.GetComponent<Country>();
 
             //updates arrays of countries
             hexCountry.UpdateArray();
             if (OldHexCountryScript != null){
                 OldHexCountryScript.UpdateArray();
                 if (OldHexCountryScript.UpdateArrayAndCountrySplitterConflictFixer == true){
-                    print("check country split on " + OldHexCountryScript);
+                    //print("check country split on " + OldHexCountryScript);
                     OldHexCountryScript.CheckCountrySplit();
                 }
             }
@@ -230,7 +238,7 @@ public class Person : MonoBehaviour
                 if (OldHexCountryScript != null)
                 {
                     OldHexCountryScript.food = 0;
-                    OldHexCountryScript.Invoke("SetCapital", .1f);
+                    StartCoroutine(SetCapitalWithDelay(OldHexCountryScript));
                 }
             }
             //if you take a castle
@@ -247,7 +255,9 @@ public class Person : MonoBehaviour
             hexagon.nationNum = this.nationNum;
             hexagon.ChangeSprite(this.nationNum);
             UIManager.UpdateStats();
-        }
+
+
+        } //end of if it is taking another country's hexagon
 
         //update grave status
         if (hexagon.hasGrave)
@@ -256,12 +266,9 @@ public class Person : MonoBehaviour
             hexagon.hasGrave = false;
             UIManager.UpdateStats();
         }
-        //end/extend the turn
+        //end the turn
         hasUsedMove = true;
-        if (usingFirstTurn) { 
-            usingFirstTurn = false;
-            hasUsedMove = false;
-        }
+        sprite.sprite = sprites[tier - 1];
         if (hexagon.hasGuard)
         {
             if (this != hexagon.guard)
@@ -276,26 +283,30 @@ public class Person : MonoBehaviour
                 UIManager.UpdateStats();
             }
         }
-        //update guardedBy feature
-        hexagon.hasGuard = true;
-        hexagon.guard = this;
-        //update the capital's flag
-        if (hexCountry.capital.village != null){
-            hexCountry.capital.EditFlag();
-        }
+        //remove guard from old hexagon
         try
         {
             oldHexagon.hasGuard = false;
             oldHexagon.guard = null;
         }
-        catch (Exception) {}
+        catch (Exception) { }
+
+        //add guard to new hexagon
+        hexagon.hasGuard = true;
+        hexagon.guard = this;
+
+        //update the capital's flag
+        if (hexCountry.capital.village != null){
+            hexCountry.capital.EditFlag();
+        }
+        //update the rest of the country and set this hexagon to oldhexagon for future use
         hexCountry.UpdateGuard();
         oldHexagon = hexagon;
     }
     public void StartingTier(){
         tier = UIManager.tier;
-        this.GetComponent<SpriteRenderer>().sprite = sprites[tier];
-        tier += 1;
+        sprite.sprite = sprites[tier - 1];
+        //tier += 1;
     }
     void UpdateTier(int a){
         tier = a;
@@ -358,5 +369,25 @@ public class Person : MonoBehaviour
         if(hexCountry.isInvasionCountry){
             hexCountry.capital.distanceFromStartingPoint = -1;
         }
+    }
+    public bool DoAnimation()//returns true if on highlighted sprites
+    {
+        if (sprite.sprite == sprites[tier - 1])
+        {
+            sprite.sprite = sprites[tier + 3];
+            return true;
+        }
+        else
+        {
+            sprite.sprite = sprites[tier - 1];
+            return false;
+        }
+    }
+    IEnumerator SetCapitalWithDelay(Country country)
+    {
+        print("SetCapitalWithDelay");
+        yield return new WaitForSeconds(.1f);
+        print(country + "SetCapital");
+        country.SetCapital();
     }
 }
