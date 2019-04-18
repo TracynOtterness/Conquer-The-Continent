@@ -7,7 +7,7 @@ using System;
 
 public class UIManager : MonoBehaviour
 {
-    private Person person;
+    public static Person person;
     public static float viewportToCanvasAdjustment = 40f;
     public static int turnNumber;
     public static int roundNumber;
@@ -15,9 +15,10 @@ public class UIManager : MonoBehaviour
     public TurnIndicator turnIndicator;
     public static Country selectedCountryScript;
     public static Ship ship;
-    public GameObject unusedHexMaster;
+    public static GameObject unusedHexMaster;
     public static GameObject shipInfo;
     public static GameObject invasionButton;
+    public static GameObject undoButton;
     public static GameObject canvas;
     public static RectTransform canvasRect;
     public static int tier;
@@ -31,14 +32,16 @@ public class UIManager : MonoBehaviour
     public static Text incomeText;
     public static Text expensesText;
     public static Text profitText;
+    public static Button nextTurnButton;
     public static ButtonTypeSwitcher bts;
     public static bool toggled = false;
     public static bool standardUnits = true;
     public static bool showingShipInfo = false;
     public static bool hoverMode = true;
-    public static int playerCount = 6;
+    public static int playerCount = 4;
     public static int shipMovementSpeed = 10;
     public static int personMovementSpeed = 3;
+
 	void Start()
     {
         foodText = GameObject.Find("food").GetComponent<Text>();
@@ -46,6 +49,8 @@ public class UIManager : MonoBehaviour
         expensesText = GameObject.Find("expenses").GetComponent<Text>();
         profitText = GameObject.Find("profit").GetComponent<Text>();
         bts = GameObject.Find("Unit type switch button").GetComponent<ButtonTypeSwitcher>();
+        nextTurnButton = GameObject.Find("Next Turn Button").GetComponent<Button>();
+        undoButton = GameObject.Find("Undo Buy Button");
         shipInfo = GameObject.Find("Ship Info");
         invasionButton = GameObject.Find("Invasion Button");
         canvas = GameObject.Find("Canvas");
@@ -66,27 +71,15 @@ public class UIManager : MonoBehaviour
 
         GameObject.FindWithTag("Audio").GetComponent<AudioSource>().volume = Slider.volume;
         GameObject.FindWithTag("Audio").GetComponent<AudioSource>().Play();
+
+        print(GameObject.Find("Border Image"));
+        GameObject.Find("Border Image").GetComponent<Image>().alphaHitTestMinimumThreshold = 1f;
     }
 
-    void Update()
-    {
-        if (Input.GetKeyDown(KeyCode.T))
-        {
-            foreach (GameObject r in redDots)
-            {
-                if (r.layer == 9) {
-                    r.layer = 0;
-                    toggled = true;
-                }
-                else {
-                    r.layer = 9;
-                    toggled = false;
-                }
-            }
-        }
+    public void SpawnUnitsWrapper(string buttonName){ //allows SpawnUnits to be called from buttons
+        SpawnUnits(buttonName);
     }
-
-    public void SpawnUnit()
+    public static void SpawnUnits(string buttonName)
     {
         if(!Mouse.hasUnit){
             if (selectedCountry != null && selectedCountry != unusedHexMaster)
@@ -98,32 +91,33 @@ public class UIManager : MonoBehaviour
                 }
                 if (standardUnits)
                 { //if this is spawning one of the human units
-                    string button = EventSystem.current.currentSelectedGameObject.name;
-                    char[] tierList = button.ToCharArray();
-                    tier = (int)char.GetNumericValue(tierList[18]);
+                    print(buttonName);
+                    tier = Int32.Parse(buttonName);
+
                     if (selectedCountryScript.food >= 10 * tier)
                     {
                         GameObject personObject;//needs to be defined here for scope reasons
                         if (showingShipInfo && ship.isHarbored && ship.harbor.transform.parent == selectedCountryScript.transform){//special ship boarding protocol
                             personObject = (GameObject)Instantiate(Resources.Load("Person"), new Vector3(Input.mousePosition.x, Input.mousePosition.y, 0f), Quaternion.identity);
                             selectedCountryScript.food -= 10 * tier;
-                            tier -= 1;
+                            //tier -= 1;
                             person = personObject.GetComponent<Person>();
                             allPeople.Add(person);
                             person.StartingTier();
                             person.BoardShip(ship.hexagon.gameObject);
                         }
                         else{//typical unit spawn
+                            print(Input.mousePosition);
                             personObject = (GameObject)Instantiate(Resources.Load("Person"), new Vector3(Input.mousePosition.x, Input.mousePosition.y, 0f), Quaternion.identity);
                             selectedCountryScript.food -= 10 * tier;
-                            tier -= 1;
+                            //tier -= 1;
                             person = personObject.GetComponent<Person>();
                             allPeople.Add(person);
                             selectedCountryScript.UpdateArray();
                             person.transform.SetParent(selectedCountry.transform);
                             person.StartingTier();
                             Mouse.person = person;
-                            FindObjectOfType<Mouse>().PickUpUnit("person");
+                            FindObjectOfType<Mouse>().PickUpUnit("person", true);
                         }
                         UpdateStats();
                     }
@@ -134,13 +128,12 @@ public class UIManager : MonoBehaviour
                 }
                 else
                 {//if this is spawning a castle, harbor, or ship
-                    string button = EventSystem.current.currentSelectedGameObject.name;
-                    switch (button)
+                    switch (buttonName)
                     {
-                        case "castle button": SpawnCastle(); break;
-                        case "harbor button": SpawnHarbor(); break;
-                        case "ship button": SpawnShip(); break;
-                        case "village button": SpawnNewCapital(); break;
+                        case "1": SpawnCastle(); break;
+                        case "2": SpawnHarbor(); break;
+                        case "3": SpawnShip(); break;
+                        case "4": SpawnNewCapital(); break;
                     }
                 }
             }
@@ -179,6 +172,7 @@ public class UIManager : MonoBehaviour
             if (selectedCountryScript != null){
                 selectedCountry = null;
                 selectedCountryScript.isSelected = false;
+                //change flashing capitals to show if the turn changes while their spriteRenderer is off
                 if (selectedCountryScript.isInvasionCountry){
                     selectedCountryScript.capital.shipCapital.GetComponent<SpriteRenderer>().enabled = true;
                 }
@@ -188,6 +182,25 @@ public class UIManager : MonoBehaviour
             }
             if (showingShipInfo) { HideShipInfo(); }
             if (!standardUnits) { bts.ChangeButtons(); }
+            foreach (Person p in allPeople)
+            {
+                if(p.nationNum != turnNumber && p.sprite.sprite == p.sprites[tier + 3])
+                {
+                    p.DoAnimation();
+                }
+            }
+            bool nationStillHasCountries = false;
+            foreach(Country c in Instantiator.countryscripts)
+            {
+                if(c.hexagons[0].nationNum == turnNumber)
+                {
+                    nationStillHasCountries = true;
+                }
+            }
+            if (!nationStillHasCountries)
+            {
+                NextTurn();
+            }
         }
         else print("You must place the currently selected unit before you can end the turn!");
     }
@@ -216,6 +229,7 @@ public class UIManager : MonoBehaviour
 
     public static void SpawnRedDots()
     {
+        print("SpawnRedDots");
             foreach (GameObject r in redDots)
             {
                 Destroy(r);
@@ -223,7 +237,7 @@ public class UIManager : MonoBehaviour
             redDots.Clear();
             foreach (Person p in allPeople)
             {
-                if (p.nationNum - 2 == turnNumber && !p.isSailor)
+                if (p.nationNum == turnNumber && !p.isSailor)
                 {
                     try { redDot = (GameObject)Instantiate(Resources.Load("RedDott"), new Vector3(p.transform.position.x, p.transform.position.y, -1f), Quaternion.identity); }
                     catch (Exception) { continue; } //this try/catch is a temporary solution for missing spots in allPeople caused by starvation
@@ -235,7 +249,7 @@ public class UIManager : MonoBehaviour
             }
             foreach (Ship s in allShips)
             {
-                if (s.nationNum - 2 == turnNumber)
+                if (s.nationNum == turnNumber)
                 {
                 try { redDot = (GameObject)Instantiate(Resources.Load("RedDott"), new Vector3(s.transform.position.x, s.transform.position.y, -1f), Quaternion.identity); }
                 catch (Exception) { continue; }
@@ -260,6 +274,7 @@ public class UIManager : MonoBehaviour
             incomeText.text = "income: " + income;
             foreach (Person p in selectedCountryScript.people)
             {
+                //print(p);
                 if (p.isSailor){
                     expenses += Ship.sailorFoodConsumption;
                 }
@@ -283,7 +298,7 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    void SpawnShip()
+    static void SpawnShip()
     {
         if(!Mouse.hasUnit){
             if (selectedCountryScript.food >= 20)
@@ -297,7 +312,7 @@ public class UIManager : MonoBehaviour
                     selectedCountryScript.UpdateArray();
                     allShips.Add(ship);
                     Mouse.ship = ship;
-                    FindObjectOfType<Mouse>().PickUpUnit("ship");
+                    FindObjectOfType<Mouse>().PickUpUnit("ship", true);
                     UpdateStats();
                 }
                 else print("What are you going to do with a ship when you have no harbor?");
@@ -312,7 +327,7 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    void SpawnCastle(){
+    static void SpawnCastle(){
         if (!Mouse.hasUnit)
         {
             if (selectedCountryScript.food >= 20)
@@ -322,7 +337,7 @@ public class UIManager : MonoBehaviour
                 Castle castle = castleObject.GetComponent<Castle>();
                 castle.transform.SetParent(selectedCountry.transform);
                 Mouse.castle = castle;
-                FindObjectOfType<Mouse>().PickUpUnit("castle");
+                FindObjectOfType<Mouse>().PickUpUnit("castle", true);
                 UpdateStats();
             }
             else
@@ -336,18 +351,17 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    void SpawnHarbor(){
+    static void SpawnHarbor(){
         if (!Mouse.hasUnit)
         {
             if (selectedCountryScript.food >= 20)
             {
                 selectedCountryScript.food -= 20;
-                selectedCountryScript.hasHarbor = true;
                 GameObject harborObject = (GameObject)Instantiate(Resources.Load("Harbor"), new Vector3(Input.mousePosition.x, Input.mousePosition.y, 0f), Quaternion.identity);
                 Harbor harbor = harborObject.GetComponent<Harbor>();
                 harbor.transform.SetParent(selectedCountry.transform);
                 Mouse.harbor = harbor;
-                FindObjectOfType<Mouse>().PickUpUnit("harbor");
+                FindObjectOfType<Mouse>().PickUpUnit("harbor", true);
                 UpdateStats();
             }
             else
@@ -361,7 +375,7 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    void SpawnNewCapital()
+    static void SpawnNewCapital()
     {
         if (!Mouse.hasUnit)
         {
@@ -371,7 +385,7 @@ public class UIManager : MonoBehaviour
                 GameObject villageObject = (GameObject)Instantiate(Resources.Load("Capital"), new Vector3(Input.mousePosition.x, Input.mousePosition.y, 0f), Quaternion.identity);
                 villageObject.GetComponent<Village>().hover = true;
                 Mouse.village = villageObject;
-                FindObjectOfType<Mouse>().PickUpUnit("village");
+                FindObjectOfType<Mouse>().PickUpUnit("village", true);
                 UpdateStats();
             }
             else
@@ -434,9 +448,10 @@ public class UIManager : MonoBehaviour
         }
 
         if (s.invasionPossibility && !s.moored && s.sailors.Count != 0 && !s.isHarbored){
-            Vector2 viewportPosition = Camera.main.WorldToViewportPoint(s.transform.position);
-            Vector2 screenPosition = new Vector2(((viewportPosition.x * canvasRect.sizeDelta.x) - (.5f * canvasRect.sizeDelta.x)), ((viewportPosition.y * canvasRect.sizeDelta.y) - (.5f * canvasRect.sizeDelta.y) + viewportToCanvasAdjustment));
-            invasionButton.GetComponent<RectTransform>().anchoredPosition = screenPosition;
+            Camera.main.GetComponent<MainCamera>().AdjustInvasionButtonPosition();
+            //Vector2 viewportPosition = Camera.main.WorldToViewportPoint(s.transform.position);
+            //Vector2 screenPosition = new Vector2(((viewportPosition.x * canvasRect.sizeDelta.x) - (.5f * canvasRect.sizeDelta.x)), ((viewportPosition.y * canvasRect.sizeDelta.y) - (.5f * canvasRect.sizeDelta.y) + viewportToCanvasAdjustment));
+            //invasionButton.GetComponent<RectTransform>().anchoredPosition = screenPosition;
             invasionButton.GetComponent<Image>().enabled = true;
             invasionButton.GetComponent<Button>().enabled = true;
             invasionButton.GetComponentInChildren<Text>().enabled = true;
@@ -563,5 +578,61 @@ public class UIManager : MonoBehaviour
                 }
             } 
         }
+    }
+    public void UndoBuy(){
+        if(Mouse.person != null){
+            selectedCountryScript.food += Mouse.person.tier * 10;
+            selectedCountryScript.people.Remove(Mouse.person);
+            allPeople.Remove(Mouse.person);
+            Destroy(Mouse.person.gameObject);
+            Mouse.person = null;
+            Mouse.hasUnit = false;
+        }
+        if(Mouse.ship != null){
+            selectedCountryScript.food += 20;
+            Destroy(Mouse.ship.gameObject);
+            Mouse.ship = null;
+            Mouse.hasUnit = false;
+        }
+        if (Mouse.castle != null)
+        {
+            selectedCountryScript.food += 20;
+            Destroy(Mouse.castle.gameObject);
+            Mouse.castle = null;
+            Mouse.hasUnit = false;
+        }
+        if (Mouse.village != null)
+        {
+            selectedCountryScript.food += 20;
+            Destroy(Mouse.village.gameObject);
+            Mouse.village = null;
+            Mouse.hasUnit = false;
+        }
+        if (Mouse.harbor != null)
+        {
+            selectedCountryScript.food += 20;;
+            Destroy(Mouse.harbor.gameObject);
+            Mouse.harbor = null;
+            Mouse.hasUnit = false;
+        }
+
+        Mouse.ResetViableHexagons();
+        selectedCountryScript.UpdateArray();
+        UpdateStats();
+
+        undoButton.GetComponent<Button>().enabled = false;
+        undoButton.GetComponent<Image>().enabled = false;
+        undoButton.GetComponentInChildren<Text>().enabled = false;
+        nextTurnButton.interactable = true;
+    }
+    public void UpdateAllPeople()
+    {
+        allPeople.Clear();
+        Person[] allPeopleArray = FindObjectsOfType<Person>();
+        foreach (Person p in allPeopleArray)
+        {
+            allPeople.Add(p);
+        }
+
     }
 }
