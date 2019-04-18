@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class HexMovement : MonoBehaviour {
 
@@ -17,8 +18,10 @@ public class HexMovement : MonoBehaviour {
     void Start(){
         hexagon = this.gameObject.GetComponent<Hexagon>();
     }
-		void OnTriggerStay2D(Collider2D col) {
-        if (col.gameObject.tag.Equals("mouse") && Input.GetMouseButtonUp(0) && Mouse.hasUnit && !Mouse.pickUpBuffer)
+	void OnTriggerStay2D(Collider2D col) {
+        if(col.gameObject.tag.Equals("mouse") && Input.GetMouseButtonUp(0)) { print("clickBuffer: " + Mouse.clickBuffer); }
+        if (col.gameObject.tag.Equals("mouse") && !Mouse.clickBuffer && Input.GetMouseButtonUp(0)) { print("clickBuffer has saved the day!"); }
+        if (Input.GetMouseButtonUp(0) && col.gameObject.tag.Equals("mouse") && Mouse.hasUnit && Mouse.clickBuffer)
         {
             if (Mouse.person != null){
                 person = Mouse.person;
@@ -27,9 +30,17 @@ public class HexMovement : MonoBehaviour {
                     placedIsValid = PlacedIsValid("person");
                     if (placedIsValid)
                     {
+                        Mouse.clickBuffer = false;
                         Mouse.hasUnit = false;
+                        print("mouse.hasUnit = false");
+                        UIManager.nextTurnButton.interactable = true;
+                        UIManager.undoButton.GetComponent<UnityEngine.UI.Button>().enabled = false;
+                        UIManager.undoButton.GetComponent<UnityEngine.UI.Image>().enabled = false;
+                        UIManager.undoButton.GetComponentInChildren<UnityEngine.UI.Text>().enabled = false;
                         Mouse.person = null;
+                        print("Mouse person set to null");
                         person.MovePerson(this.gameObject);
+                        Invoke("MakeBufferTrue", .1f);
                     }
                 }  
             }
@@ -39,6 +50,10 @@ public class HexMovement : MonoBehaviour {
                     placedIsValid = PlacedIsValid("ship");
                     if (placedIsValid){
                         Mouse.hasUnit = false;
+                        UIManager.nextTurnButton.interactable = true;
+                        UIManager.undoButton.GetComponent<UnityEngine.UI.Button>().enabled = false;
+                        UIManager.undoButton.GetComponent<UnityEngine.UI.Image>().enabled = false;
+                        UIManager.undoButton.GetComponentInChildren<UnityEngine.UI.Text>().enabled = false;
                         Mouse.ship = null;
                         ship.hover = false;
                         ship.hasUsedMove = true;
@@ -53,10 +68,14 @@ public class HexMovement : MonoBehaviour {
                     placedIsValid = PlacedIsValid("castle");
                     if(placedIsValid){
                         Mouse.hasUnit = false;
+                        UIManager.nextTurnButton.interactable = true;
+                        UIManager.undoButton.GetComponent<UnityEngine.UI.Button>().enabled = false;
+                        UIManager.undoButton.GetComponent<UnityEngine.UI.Image>().enabled = false;
+                        UIManager.undoButton.GetComponentInChildren<UnityEngine.UI.Text>().enabled = false;
                         Mouse.castle = null;
                         castle.hover = false;
                         hexagon.guardedBy = 2;
-                        hexagon.hasCastle = true;
+                        //hexagon.hasCastle = true;
                         hexagon.castle = castle.gameObject;
                         castle.Place(this.gameObject);
 
@@ -72,9 +91,17 @@ public class HexMovement : MonoBehaviour {
                     {
                         Mouse.hasUnit = false;
                         Mouse.harbor = null;
+
+                        UIManager.nextTurnButton.interactable = true;
+                        UIManager.undoButton.GetComponent<UnityEngine.UI.Button>().enabled = false;
+                        UIManager.undoButton.GetComponent<UnityEngine.UI.Image>().enabled = false;
+                        UIManager.undoButton.GetComponentInChildren<UnityEngine.UI.Text>().enabled = false;
+
                         harbor.hover = false;
                         hexagon.hasHarbor = true;
                         hexagon.harbor = harbor.gameObject;
+                        UIManager.selectedCountryScript.hasHarbor = true;
+
                         harbor.Place(this.gameObject);
 
                     }
@@ -85,9 +112,13 @@ public class HexMovement : MonoBehaviour {
                 placedIsValid = PlacedIsValid("village");
                 if(placedIsValid){
                     Mouse.hasUnit = false;
+                    UIManager.nextTurnButton.interactable = true;
+                    UIManager.undoButton.GetComponent<UnityEngine.UI.Button>().enabled = false;
+                    UIManager.undoButton.GetComponent<UnityEngine.UI.Image>().enabled = false;
+                    UIManager.undoButton.GetComponentInChildren<UnityEngine.UI.Text>().enabled = false;
                     Destroy(Mouse.village);
-                    Mouse.village = null;
-                    village.GetComponent<Village>().hover = false;
+                    //Mouse.village = null;
+                   // village.GetComponent<Village>().hover = false;
                     Mouse.ResetViableHexagons();
                     this.transform.parent.GetComponent<Country>().SetCapital(hexagon);
                 }
@@ -122,21 +153,34 @@ public class HexMovement : MonoBehaviour {
                             }
                             if (isAdjacentToParentCountry)
                             {
+                                print("1");
                                 if (hexagon.guardedBy < person.tier || hexagon.guardedBy == 0)
                                 {
-                                    if (hexagon.hasGuard)
+                                    print("2");
+                                    if (hexagon.distanceFromStartingPoint != -1)
                                     {
-                                        if (hexagon.transform.parent != person.transform.parent)
+                                        print("3");
+                                        if (hexagon.hasGuard)
                                         {
-                                            Country country = hexagon.transform.parent.GetComponent<Country>();
-                                            UIManager.allPeople.Remove(hexagon.guard);
-                                            Destroy(hexagon.guard.gameObject);
-                                            hexagon.hasGuard = false;
-                                            country.UpdateGuard();
-                                            country.UpdateArray();
+                                            print("4");
+                                            if (hexagon.transform.parent != person.transform.parent)
+                                            {
+                                                print("destroying " + hexagon.guard);
+                                                Country country = hexagon.transform.parent.GetComponent<Country>();
+                                                UIManager.allPeople.Remove(hexagon.guard);
+                                                Destroy(hexagon.guard.gameObject);
+                                                hexagon.hasGuard = false;
+                                                country.Invoke("UpdateGuard", .1f);
+                                                country.Invoke("UpdateArray", .2f);
+                                            }
                                         }
+                                        return true;
                                     }
-                                    return true;
+                                    else
+                                    {
+                                        print("that hexagon is out of range for this unit!");
+                                        return false;
+                                    }
                                 }
                                 else
                                 {
@@ -179,13 +223,25 @@ public class HexMovement : MonoBehaviour {
                             return false;
                         }
                     }
+                    if (hexagon.distanceFromStartingPoint == -1) 
+                    {
+                        print("that hexagon is out of range of this unit!");
+                        return false;
+                    }
                     return true;
                 }
 
                 if (hexagon.hasShip && hexagon.ship.isHarbored && hexagon.ship.harbor.transform.parent == person.transform.parent && hexagon.ship.sailors.Count < 10)
                 {
                     Mouse.hasUnit = false;
+                    Mouse.boardingBuffer = true;
+                    Invoke("UndoBuffer", .001f);
+                    UIManager.nextTurnButton.interactable = true;
+                    UIManager.undoButton.GetComponent<UnityEngine.UI.Button>().enabled = false;
+                    UIManager.undoButton.GetComponent<UnityEngine.UI.Image>().enabled = false;
+                    UIManager.undoButton.GetComponentInChildren<UnityEngine.UI.Text>().enabled = false;
                     Mouse.person = null;
+                    print("mouse.person = null");
                     foreach (Hexagon h in Mouse.viableHexagons) { h.ToggleMask(); }
                     Mouse.viableHexagons.Clear();
                     person.BoardShip(this.gameObject);
@@ -202,7 +258,14 @@ public class HexMovement : MonoBehaviour {
                     if (hexagon.hasShip){
                         if(hexagon.ship.sailors.Count < 10){
                             Mouse.hasUnit = false;
+                            Mouse.boardingBuffer = true;
+                            Invoke("UndoBuffer", .001f);
+                            UIManager.nextTurnButton.interactable = true;
+                            UIManager.undoButton.GetComponent<UnityEngine.UI.Button>().enabled = false;
+                            UIManager.undoButton.GetComponent<UnityEngine.UI.Image>().enabled = false;
+                            UIManager.undoButton.GetComponentInChildren<UnityEngine.UI.Text>().enabled = false;
                             Mouse.person = null;
+                            print("Mouse.person = null");
                             foreach (Hexagon h in Mouse.viableHexagons) { h.ToggleMask(); }
                             Mouse.viableHexagons.Clear();
                             person.BoardShip(this.gameObject);
@@ -214,6 +277,63 @@ public class HexMovement : MonoBehaviour {
                             return false;
                         }
                     }
+                    if (this.gameObject.transform.parent != person.transform.parent)
+                    {
+                        bool isAdjacentToParentCountry = false;
+                        foreach (GameObject g in hexagon.adj)
+                        {
+                            Hexagon h = g.GetComponent<Hexagon>();
+                            if (g.transform.parent == person.transform.parent)
+                            {
+                                isAdjacentToParentCountry = true;
+                            }
+                            if (h.hasShip)
+                            {
+                                if (h.ship.nationNum == person.nationNum && h.ship.moored)
+                                {
+                                    isAdjacentToParentCountry = true;
+                                }
+                            }
+                        }
+                        if (isAdjacentToParentCountry)
+                        {
+                            print("1");
+                            if (hexagon.guardedBy < person.tier || hexagon.guardedBy == 0)
+                            {
+                                print("2");
+                                if (hexagon.distanceFromStartingPoint != -1)
+                                {
+                                    print("3");
+                                    if (hexagon.hasGuard)
+                                    {
+                                        print("4");
+                                        if (hexagon.transform.parent != person.transform.parent)
+                                        {
+                                            print("destroying " + hexagon.guard);
+                                            Country country = hexagon.transform.parent.GetComponent<Country>();
+                                            UIManager.allPeople.Remove(hexagon.guard);
+                                            Destroy(hexagon.guard.gameObject);
+                                            hexagon.hasGuard = false;
+                                            country.Invoke("UpdateGuard", .1f);
+                                            country.Invoke("UpdateArray", .2f);
+                                        }
+                                    }
+                                    return true;
+                                }
+                                else
+                                {
+                                    print("that hexagon is out of range for this unit!");
+                                    return false;
+                                }
+                            }
+                            else
+                            {
+                                print("the unit you tried to occupy is too heavily guarded for that unit to take!");
+                                return false;
+                            }
+                        }
+                    }
+
                     return true;
                 }
                 else { 
@@ -305,5 +425,12 @@ public class HexMovement : MonoBehaviour {
             }
         }
         return false;
+    }
+    void UndoBuffer(){
+        Mouse.boardingBuffer = false;
+    }
+    void MakeBufferTrue()
+    {
+        FindObjectOfType<Mouse>().MakeBufferTrue();
     }
 }
