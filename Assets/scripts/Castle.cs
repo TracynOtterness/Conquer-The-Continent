@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -20,14 +20,16 @@ public class Castle : MonoBehaviour {
 	void Update () {
         if (hover && UIManager.hoverMode)
         {
-            this.transform.position = Mouse.mousePos;
+            this.transform.position = FindObjectOfType<Mouse>().transform.position;
         }
 	}
 
     public void Place(GameObject g){
         hex = g;
         hexagon = g.GetComponent<Hexagon>();
+        hexagon.hasCastle = true;
         this.transform.parent.GetComponent<Country>().UpdateGuard();
+        this.transform.parent.GetComponent<Country>().capital.EditFlag();
         this.GetComponent<SpriteRenderer>().sortingOrder = 2;
         Destroy(this.GetComponent<CircleCollider2D>());
         Vector3 pos = hex.transform.position;
