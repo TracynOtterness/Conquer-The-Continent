@@ -5,7 +5,7 @@ public class Hexagon : MonoBehaviour {
 	public int HexPosX;
 	public int HexPosY;
     public int nationNum;
-    private float b = .279f;
+    private float b = 0.2797f;
 	private Sprite[] spriteArray;
     public GameObject[] adj = new GameObject[6];
     public int guardedBy = 0;
@@ -72,7 +72,7 @@ public class Hexagon : MonoBehaviour {
     public void AddCapital(){ 
             hasCapital = true;
             foreach(Transform t in this.transform){
-            if(t.tag == "capital"){
+            if( t.tag == "capital"){
                 village = t.gameObject;
             }
             }
@@ -81,9 +81,9 @@ public class Hexagon : MonoBehaviour {
     }
     public void RemoveCapital(){
         hasCapital = false;
-        print(village);
+        //print(village);
         Destroy(village);
-        print("you destroyed the capital!");
+        //print("you destroyed the capital!");
     }
     public void EditFlag(){
         if (village == null) return;
@@ -103,7 +103,6 @@ public class Hexagon : MonoBehaviour {
         }
     }
     public void ToggleShipColor(int shipNationNum){
-        print("ToggleShipColor");
         if (transform.GetChild(1).GetComponent<SpriteRenderer>().enabled == true){
             transform.GetChild(1).GetComponent<SpriteRenderer>().enabled = false;
         }
