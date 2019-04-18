@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -29,7 +29,7 @@ public class ButtonTypeSwitcher : MonoBehaviour {
             foreach (GameObject b in buttonArray)
             {
                 b.transform.Find("Image").GetComponent<UnityEngine.UI.Image>().sprite = sprites[i + 4];
-                b.transform.Find("Text").GetComponent<UnityEngine.UI.Text>().text = "Cost: 20";
+                b.transform.Find("Text").GetComponent<UnityEngine.UI.Text>().text = "20";
                 i++;
             }
             originalButtonType = false;
@@ -44,7 +44,7 @@ public class ButtonTypeSwitcher : MonoBehaviour {
             foreach (GameObject b in buttonArray)
             {
                 b.transform.Find("Image").GetComponent<UnityEngine.UI.Image>().sprite = sprites[i];
-                b.transform.Find("Text").GetComponent<UnityEngine.UI.Text>().text = "Cost: " + (i+1)*10;
+                b.transform.Find("Text").GetComponent<UnityEngine.UI.Text>().text = ((i+1)*10).ToString();
                 i++;
             }
             originalButtonType = true;
