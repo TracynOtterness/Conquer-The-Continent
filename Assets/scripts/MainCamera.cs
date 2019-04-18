@@ -10,50 +10,41 @@ public class MainCamera : MonoBehaviour
     Vector3 originalTransform;
     public float poscoefficientx = 9.35f;
     public float poscoefficienty = 5.85f;
+    float maxSize;
     float cameraSize = 10f;
     Vector3 fixTransform;
     public float[] clampValueX;
     public float[] clampValueY;
     public int adjustValue;
 
-    void Start()
-    {
-        this.GetComponent<Camera>().orthographicSize = 10.86f;
-    }
+	//so basically use the website on school computer to make functios for clamp 
+	//values and instead of a switch for set things make it a continuous camera scroll between 0 and 10.48
+	private void Start()
+	{
+        SetCameraStartingPosition();
+	}
 
-    //so basically use the website on school computer to make functios for clamp 
-    //values and instead of a switch for set things make it a continuous camera scroll between 0 and 10.48
-
-    void Update()
+	void Update()
     {
         clampValueX = ClampValueGetX(cameraSize);
         clampValueY = ClampValueGetY(cameraSize);
         fixTransform = transform.position;
         if (Input.GetAxis("Mouse ScrollWheel") > 0f && this.GetComponent<Camera>().orthographicSize > 1.48f)
         {
-            this.GetComponent<Camera>().orthographicSize -= .4f;//needs changed
+            this.GetComponent<Camera>().orthographicSize -= .4f;
+            if (this.GetComponent<Camera>().orthographicSize < 1.48f) this.GetComponent<Camera>().orthographicSize = 1.48f;
             cameraSize = this.GetComponent<Camera>().orthographicSize;
             poscoefficientx = AdjustDragCoefficientX(cameraSize);
             poscoefficienty = AdjustDragCoefficientY(cameraSize);
             adjustValue = 0;
             if (UIManager.showingShipInfo && UIManager.ship.invasionPossibility) {
-                RectTransform invasionTransform = UIManager.invasionButton.GetComponent<RectTransform>();
-                switch((int)cameraSize){
-                    case 2: invasionTransform.localScale = new Vector3(2, 2, 1); adjustValue = 0; break;
-                    case 3: invasionTransform.localScale = new Vector3(1, 1, 1); adjustValue = 20; break;
-                    case 4: invasionTransform.localScale = new Vector3(.5f, .5f, 1); adjustValue = 25; break;
-                    default: UIManager.HideInvasionButton(); break;
-                }
-                UIManager.AdjustInvasionButton(adjustValue);
-                if (cameraSize <= 4 && !UIManager.ship.moored){
-                    UIManager.invasionButton.GetComponent<UnityEngine.UI.Image>().enabled = true;
-                    UIManager.invasionButton.GetComponentInChildren<UnityEngine.UI.Text>().enabled = true;
-                }
+                AdjustInvasionButtonPosition();
             }
         }
-        else if (Input.GetAxis("Mouse ScrollWheel") < 0f && this.GetComponent<Camera>().orthographicSize < 10.48f)
+        else if (Input.GetAxis("Mouse ScrollWheel") < 0f && this.GetComponent<Camera>().orthographicSize < maxSize)
         {
             this.GetComponent<Camera>().orthographicSize += .4f;
+            if (this.GetComponent<Camera>().orthographicSize > maxSize) this.GetComponent<Camera>().orthographicSize = maxSize;
             cameraSize = this.GetComponent<Camera>().orthographicSize;
             poscoefficientx = AdjustDragCoefficientX(cameraSize);
             poscoefficienty = AdjustDragCoefficientY(cameraSize);
@@ -65,15 +56,7 @@ public class MainCamera : MonoBehaviour
             adjustValue = 0;
             if (UIManager.showingShipInfo && UIManager.ship.invasionPossibility)
             {
-                RectTransform invasionTransform = UIManager.invasionButton.GetComponent<RectTransform>();
-                switch ((int)cameraSize)
-                {
-                    case 2: invasionTransform.localScale = new Vector3(2, 2, 1); adjustValue = 0; break;
-                    case 3: invasionTransform.localScale = new Vector3(1, 1, 1); adjustValue = 20; break;
-                    case 4: invasionTransform.localScale = new Vector3(.5f, .5f, 1); adjustValue = 25; break;
-                    default: UIManager.HideInvasionButton(); break;
-                }
-                UIManager.AdjustInvasionButton(adjustValue);
+                AdjustInvasionButtonPosition();
             }
         }
         if (Input.GetMouseButtonDown(1))
@@ -96,31 +79,35 @@ public class MainCamera : MonoBehaviour
             if (UIManager.showingShipInfo && UIManager.ship.invasionPossibility){ UIManager.AdjustInvasionButton(adjustValue); }
         }
     }
-    public float[] ClampValueGetX(float cs) //needs reworking to be fine with floats
+    public float[] ClampValueGetX(float cs) 
     {
         //function for clampvalueXmin: y = 1.773x + .138
         //function for clampvalueXmax: 
         float[] b = new float[2];
-        b[0] = cs * 1.74f - .3f;
-        b[1] = -cs * .85f + 27.86f;
+        b[0] = cs * 1.74f - .314f;
+        switch(Instantiator.size){
+            case 1: b[1] = -cs * .854f + 11.336f; break;
+            case 2: b[1] = -cs * .837f + 18.653f; break;
+            case 3: b[1] = -cs * .8525f + 27.854f; break;
+        }
         return b;
     }
-    public float[] ClampValueGetY(float cs) //needs reworking to be fine with floats
+    public float[] ClampValueGetY(float cs)
     {
         //function for clampvalueYmin: y = x - .189f
         //function for clampvalueYmax: y = -x + 19.23
         float[] b = new float[2];
-        b[0] = cs * .97f - .3f;
-        b[1] = -cs * .97f + 20.72f;
+        b[0] = cs * .966f - .278f;
+        switch(Instantiator.size){
+            case 1: b[1] = -cs * .967f + 8.392f; break;
+            case 2: b[1] = -cs * .974f + 13.997f; break;
+            case 3: b[1] = -cs * .964f + 20.68f; break;
+        }
         return b;
     }
     public void FixCameraOnZoomOutX()
     {
         print("FixCameraX");
-        print("x transform: " + transform.position.x);
-        print("y transform: " + transform.position.y);
-        print(clampValueX[0]);
-        print(clampValueX[1]);
         float fixX = 0;
         if (transform.position.x < clampValueX[0]) { fixX = clampValueX[0]; }
         if (transform.position.x > clampValueX[1]) { fixX = clampValueX[1]; }
@@ -130,10 +117,6 @@ public class MainCamera : MonoBehaviour
     public void FixCameraOnZoomOutY()
     {
         print("FixCameraY");
-        print("x transform: " + transform.position.x);
-        print("y transform: " + transform.position.y);
-        print(clampValueY[0]);
-        print(clampValueY[1]);
         float fixY = 0;
         if (transform.position.y < clampValueY[0]) { fixY = clampValueY[0]; }
         if (transform.position.y > clampValueY[1]) { fixY = clampValueY[1]; }
@@ -149,5 +132,32 @@ public class MainCamera : MonoBehaviour
     {
         float returnValue = cs * 2;
         return returnValue;
+    }
+    void SetCameraStartingPosition(){
+        switch (Instantiator.size)
+        {
+            case 1: maxSize = 4.49f; this.GetComponent<Camera>().orthographicSize = maxSize; transform.position = new Vector3(7.5f, 4.05f, -10); GameObject.Find("MiniMap").transform.position = new Vector3(5.51f, 4.01f, -12); GameObject.Find("MiniMap").GetComponent<Camera>().orthographicSize = 4.42f; break;
+            case 2: maxSize = 7.36f; this.GetComponent<Camera>().orthographicSize = maxSize; transform.position = new Vector3(12.49f, 6.83f, -10); GameObject.Find("MiniMap").transform.position = new Vector3(9.17f, 6.83f, -12); GameObject.Find("MiniMap").GetComponent<Camera>().orthographicSize = 7.15f; break;
+            case 3: maxSize = 10.86f; this.GetComponent<Camera>().orthographicSize = maxSize; break;
+        }
+    }
+    public void AdjustInvasionButtonPosition(){
+        
+        RectTransform invasionTransform = UIManager.invasionButton.GetComponent<RectTransform>();
+
+        float invasionTransformValue = cameraSize * -.625f + 2.925f;
+        invasionTransform.localScale = new Vector3(invasionTransformValue, invasionTransformValue, 1);
+        adjustValue = (int)(cameraSize * 14.583f - 31.583f);
+
+        UIManager.AdjustInvasionButton(adjustValue);
+
+        if (cameraSize <= 4 && !UIManager.ship.moored)
+        {
+            UIManager.invasionButton.GetComponent<UnityEngine.UI.Image>().enabled = true;
+            UIManager.invasionButton.GetComponentInChildren<UnityEngine.UI.Text>().enabled = true;
+        }
+        else{
+            UIManager.HideInvasionButton();
+        }
     }
 }
