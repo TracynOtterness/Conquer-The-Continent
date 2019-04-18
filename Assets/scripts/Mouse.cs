@@ -6,6 +6,8 @@ using UnityEngine.EventSystems;
 
 public class Mouse : MonoBehaviour {
 	public static bool hasUnit = false;
+    public static bool boardingBuffer;
+    public static bool clickBuffer = true;
 	public static Vector3 mousePos;
 	public static Person person;
     public static Ship ship;
@@ -17,25 +19,16 @@ public class Mouse : MonoBehaviour {
     bool pickedUpIsValid;
     private GameObject parent;
     private bool clickedHexagonHasCountry;
-    public static bool pickUpBuffer;
-    float pickUpBufferCounter = .5f;
 
 	private void Start()
 	{
         viableHexagons = new List<Hexagon>();
 	}
-	void Update() {
-		mousePos = new Vector3 (Input.mousePosition.x, Input.mousePosition.y, 1);
-		mousePos = Camera.main.ScreenToWorldPoint (mousePos);
-		this.transform.position = mousePos;
-        if (pickUpBuffer){
-            pickUpBufferCounter -= Time.deltaTime;
-            if (pickUpBufferCounter <= 0){
-                pickUpBuffer = false;
-                pickUpBufferCounter = .5f;
-            }
-        }
-	}
+
+    public void MakeBufferTrue()
+    {
+        clickBuffer = true;
+    }
 	void OnTriggerStay2D(Collider2D col){
         try
         {
@@ -43,15 +36,21 @@ public class Mouse : MonoBehaviour {
             clickedHexagonHasCountry = true;
         }
         catch (Exception) { clickedHexagonHasCountry = false; }
-        if (col.gameObject.tag.Equals("person") && Input.GetMouseButtonDown(0) && !hasUnit)
+        if (Input.GetMouseButtonUp(0) && col.gameObject.tag.Equals("person") && !hasUnit && clickBuffer)
         {
+            print("clicked on a person");
+            clickBuffer = false;
             person = col.GetComponent<Person>();
+            print("person set to " + person);
             pickedUpIsValid = PickedUpIsValid("person");
-            if (pickedUpIsValid) PickUpUnit("person");
+            if (pickedUpIsValid) { PickUpUnit("person"); print("picked up person"); }
             if (UIManager.showingShipInfo) UIManager.HideShipInfo();
+            Invoke("MakeBufferTrue", .1f);
         }
-        else if (village == null && col.gameObject.tag.Equals("capital") && Input.GetMouseButtonDown(0) && UIManager.turnNumber == col.gameObject.transform.parent.GetComponent<Hexagon>().nationNum)
+        else if (Input.GetMouseButtonUp(0) && village == null && col.gameObject.tag.Equals("capital") && UIManager.turnNumber == col.gameObject.transform.parent.GetComponent<Hexagon>().nationNum)
         {
+            print("clicked on village");
+            clickBuffer = false;
             if (UIManager.showingShipInfo)
             {
                 UIManager.HideShipInfo();
@@ -60,43 +59,53 @@ public class Mouse : MonoBehaviour {
             {
                 UIManager.SetCurrentCountry(parent.transform.parent.gameObject);
             }
+            else { print("sup"); }
+            Invoke("MakeBufferTrue", .1f);
         }
-        else if (col.gameObject.tag.Equals("ship") && Input.GetMouseButtonDown(0))
+        else if (Input.GetMouseButtonUp(0) && col.gameObject.tag.Equals("ship"))
         {
+            clickBuffer = false;
             if (col.gameObject.GetComponent<Ship>().moored)
             { //selecting an invasion country because the ship is the temporary capital
                 if (!EventSystem.current.IsPointerOverGameObject())
                 {
                     UIManager.SetCurrentCountry(col.transform.parent.gameObject);
                 }
+                Invoke("MakeBufferTrue", .1f);
                 return;
             }
-            if (!hasUnit)
-            { //normal pick up ship
+            if (!hasUnit && !boardingBuffer) //normal pick up ship
+            {
                 ship = col.GetComponent<Ship>();
                 pickedUpIsValid = PickedUpIsValid("ship");
                 if (pickedUpIsValid)
                 {
                     PickUpUnit("ship");
+                    print("PickUpShip");
                     UIManager.ShowBoatInfo(ship);
                 }
             }
+            Invoke("MakeBufferTrue", .1f);
         }
-        else if (col.gameObject.tag.Equals("ship") && Input.GetMouseButtonDown(1)){
+        else if (Input.GetMouseButtonUp(1) && col.gameObject.tag.Equals("ship")){
             ship = col.GetComponent<Ship>();
             UIManager.ShowBoatInfo(ship);
         }
 	}
-	void PickedUpBuffer(){
+    public void PickUpUnit(string s, bool initialSpawn = false){
+        print("hasUnit = true");
         hasUnit = true;
-        pickUpBuffer = true;
-	}
-    public void PickUpUnit(string s){
+        UIManager.nextTurnButton.interactable = false;
+        if(initialSpawn){
+            UIManager.undoButton.GetComponent<UnityEngine.UI.Button>().enabled = true;
+            UIManager.undoButton.GetComponent<UnityEngine.UI.Image>().enabled = true;
+            UIManager.undoButton.GetComponentInChildren<UnityEngine.UI.Text>().enabled = true;
+        }
         if (s == "person")
         {
             if (person.redDot != null){ person.redDot.layer = 9; }
             person.GetComponent<CircleCollider2D>().radius = .0036f;
-            this.Invoke("PickedUpBuffer", .1f);
+            
             person.hover = true;
 
             if (!person.usingFirstTurn)
@@ -107,7 +116,6 @@ public class Mouse : MonoBehaviour {
                 viableHexagons.Add(person.hexagon);
                 person.hexagon.distanceFromStartingPoint = 0;
                 addingViableHexes.Add(person.hexagon);
-                print(person.hexagon);
                 for (int i = UIManager.personMovementSpeed; i > 0; i--)
                 {
                     for (int j = addingViableHexes.Count - 1; j >= 0; j--)
@@ -130,7 +138,9 @@ public class Mouse : MonoBehaviour {
                                     Hexagon checkForAdjacency;
                                     foreach (GameObject l in possibleHex.adj)
                                     {
-                                        checkForAdjacency = l.GetComponent<Hexagon>();
+                                        try { checkForAdjacency = l.GetComponent<Hexagon>(); }
+                                        catch (Exception) { isAdjacentToParentCountry = false; break; }
+
                                         if (checkForAdjacency.transform.parent == person.transform.parent) { isAdjacentToParentCountry = true; }
                                         if (checkForAdjacency.hasShip)
                                         {
@@ -157,8 +167,6 @@ public class Mouse : MonoBehaviour {
                                 if (possibleHex.transform.parent != person.transform.parent && UIManager.roundNumber == 1) { isRoundOne = true; }
                                 if (possibleHex.isLand)
                                 {
-                                    print(possibleHex);
-                                    print(isAdjacentToParentCountry + " " + personCanCaptureEnemy + " " + !isRoundOne);
                                     if (isAdjacentToParentCountry && personCanCaptureEnemy && !isRoundOne)
                                     {
                                         if (possibleHex.transform.parent == person.transform.parent)
@@ -189,6 +197,7 @@ public class Mouse : MonoBehaviour {
                         }
                     }
                 }
+                if (person.hexagon.hasShip && person.hexagon.ship.moored) { viableHexagons.Remove(person.hexagon); }
                 foreach (Hexagon h in viableHexagons)
                 {
                     h.ToggleMask();
@@ -229,12 +238,15 @@ public class Mouse : MonoBehaviour {
                                     Hexagon checkForAdjacency;
                                     foreach (GameObject l in possibleHex.adj)
                                     {
-                                        checkForAdjacency = l.GetComponent<Hexagon>();
-                                        if (checkForAdjacency.transform.parent == person.transform.parent) { isAdjacentToParentCountry = true; }
-                                        if (checkForAdjacency.hasShip)
-                                        {
-                                            if (checkForAdjacency.ship.transform.parent == person.transform.parent) { isAdjacentToParentCountry = true; }
+                                        try{
+                                            checkForAdjacency = l.GetComponent<Hexagon>();
+                                            if (checkForAdjacency.transform.parent == person.transform.parent) { isAdjacentToParentCountry = true; }
+                                            if (checkForAdjacency.hasShip)
+                                            {
+                                                if (checkForAdjacency.ship.transform.parent == person.transform.parent) { isAdjacentToParentCountry = true; }
+                                            }
                                         }
+                                        catch{}
                                     }
                                 }
 
@@ -300,7 +312,7 @@ public class Mouse : MonoBehaviour {
             if (ship.oldHexagon != null){
                 ship.oldHexagon.ToggleShipColor(ship.nationNum);
             }
-            this.Invoke("PickedUpBuffer", .1f);
+            
             ship.hover = true;
             UIManager.HideInvasionButton();
             ship.invasionPossibility = false;
@@ -357,7 +369,7 @@ public class Mouse : MonoBehaviour {
         }
         else if (s == "castle"){
             castle.GetComponent<CircleCollider2D>().radius = .0036f;
-            this.Invoke("PickedUpBuffer", .1f);
+            
             castle.hover = true;
             viableHexagons.Clear();
             //show viable spots to place
@@ -373,7 +385,6 @@ public class Mouse : MonoBehaviour {
         }
         else if (s == "harbor"){
             harbor.GetComponent<CircleCollider2D>().radius = .0036f;
-            this.Invoke("PickedUpBuffer", .1f);
             harbor.hover = true;  
             viableHexagons.Clear();
             foreach (Hexagon h in UIManager.selectedCountryScript.hexagons)
@@ -396,7 +407,7 @@ public class Mouse : MonoBehaviour {
             }
         }
         else if (s == "village"){
-            this.Invoke("PickedUpBuffer", .1f);
+            
             viableHexagons.Clear();
             foreach(Hexagon h in UIManager.selectedCountryScript.hexagons){
                 if(!h.hasCastle && !h.hasHarbor && !h.hasCapital && !h.hasGuard && !h.hasGrave){
@@ -411,10 +422,13 @@ public class Mouse : MonoBehaviour {
     }
     public bool PickedUpIsValid(string s){
         if(s == "person"){
+            print("person.hasUsedMove: "+ person.hasUsedMove + " person.hover: " + person.hover + " hasUnit: " + hasUnit);
             if (UIManager.selectedCountry == person.transform.parent.gameObject && person.hasUsedMove == false && person.hover == false && hasUnit == false)
             {
                 return true;
             }
+            person = null;
+            print("Mouse.person set to null");
             return false;   
         }
         if(s == "ship"){
